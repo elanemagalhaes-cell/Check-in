@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "functions": {
+    "api/checkin.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "routes": [
+    { "src": "/api/checkin", "dest": "/api/checkin.js" }
+  ]
+}
