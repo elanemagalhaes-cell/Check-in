@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Painel — Escalados x Check-in</title>
+<style>
+  :root{--bg:#0b1020;--card:#121831;--muted:#9aa3b2;--border:#223054}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,Helvetica,Arial;background:linear-gradient(180deg,#0b1020,#0e1430);color:#e5e7eb}
+  .wrap{max-width:1100px;margin:24px auto;padding:0 16px}
+  h1{font-size:1.35rem;margin:0 0 8px}
+  .small{font-size:.9rem;color:var(--muted)}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-top:14px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .btn{padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:#1a2b57;color:#e5e7eb;cursor:pointer}
+  .btn:active{transform:scale(.98)}
+  table{width:100%;border-collapse:collapse;margin-top:8px}
+  thead th{position:sticky;top:0;background:#0f162f;text-align:left;border-bottom:1px solid var(--border);padding:10px}
+  tbody td{border-bottom:1px solid var(--border);padding:10px}
+  .badge-ok{display:inline-block;padding:4px 8px;border-radius:999px;border:1px solid #1e3a2b;background:#0e2a1c;color:#bbf7d0;font-size:.85rem}
+  .badge-warn{display:inline-block;padding:4px 8px;border-radius:999px;border:1px solid #5f1b1b;background:#3a1212;color:#fecaca;font-size:.85rem}
+  .badge-miss{ color:#9aa3b2 }
+  .mono{ font-family: ui-monospace,Consolas,Menlo,monospace }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Drivers únicos (Escalados) + Registro de check-in</h1>
+    <p class="small">
+      Exibe Driver ID → Driver name → Corridor/Cage.
+      Status: <span class="badge-ok">🟢 Check in</span> quando registrou hoje; após 14:30, quem não registrou aparece como <span class="badge-warn">🛑 Declinou</span>.
+    </p>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <div class="small">Linhas: <span id="rowCount">0</span></div>
+        <div class="row">
+          <button class="btn" id="btnReload">Atualizar</button>
+        </div>
+      </div>
+
+      <div style="overflow:auto;max-height:70vh;margin-top:8px">
+        <table id="tbl">
+          <thead>
+            <tr>
+              <th>Driver ID</th>
+              <th>Driver name</th>
+              <th>Corridor/Cage</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+<script>
+const API_URL = '/api/drivers-with-check'; // mesmo domínio do app
+
+function isAtOrAfterDecline(d = new Date(), thr = {h:14, m:30}){
+  const nowM = d.getHours()*60 + d.getMinutes();
+  const thrM = thr.h*60 + thr.m;
+  return nowM >= thrM;
+}
+
+async function load(){
+  const body = document.querySelector('#tbl tbody');
+  const counter = document.getElementById('rowCount');
+  body.innerHTML = '<tr><td colspan="4">Carregando...</td></tr>';
+
+  try{
+    const r = await fetch(API_URL);
+    const json = await r.json();
+    if(!json.ok) throw new Error(json.msg || 'Falha ao carregar');
+
+    const rows = json.data || [];
+    const thr = json.decline || {h:14, m:30};
+    const showDeclined = isAtOrAfterDecline(new Date(), thr);
+
+    body.innerHTML = '';
+    const frag = document.createDocumentFragment();
+
+    for(const item of rows){
+      const tr = document.createElement('tr');
+
+      const td1 = document.createElement('td');
+      td1.textContent = item.id;
+      td1.className = 'mono';
+
+      const td2 = document.createElement('td');
+      td2.textContent = item.name;
+
+      const td3 = document.createElement('td');
+      td3.textContent = item.corridor || '';
+
+      const td4 = document.createElement('td');
+      if(item.inRef) td4.innerHTML = '<span class="badge-ok">🟢 Check in</span>';
+      else if(showDeclined) td4.innerHTML = '<span class="badge-warn">🛑 Declinou</span>';
+      else td4.innerHTML = '<span class="badge-miss">—</span>';
+
+      tr.append(td1, td2, td3, td4);
+      frag.appendChild(tr);
+    }
+
+    body.appendChild(frag);
+    if(counter) counter.textContent = String(rows.length);
+
+  }catch(e){
+    body.innerHTML = `<tr><td colspan="4" class="badge-warn">Erro: ${e.message}</td></tr>`;
+  }
+}
+
+document.getElementById('btnReload')?.addEventListener('click', load);
+load();
+</script>
+</body>
+</html>
