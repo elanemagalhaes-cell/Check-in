@@ -3,7 +3,6 @@ import { createClient } from '@supabase/supabase-js';
 const SUPABASE_URL = process.env.SUPABASE_URL;  
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;  
   
-const FUSO = 'America/Sao_Paulo';  
 const LAT_BASE = -22.798782412241856;  
 const LNG_BASE = -43.3489248374091;  
 const RAIO_KM  = 2;           // km  
@@ -16,7 +15,6 @@ function calcularDistKm(lat1, lon1, lat2, lon2){
   const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;  
   return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));  
 }  
-  
 const normId = v => String(v || '').trim().replace(/\.0$/, '');  
   
 export default async function handler(req, res){  
@@ -24,7 +22,6 @@ export default async function handler(req, res){
   res.setHeader('Access-Control-Allow-Origin', '*');  
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');  
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');  
-  
   if (req.method === 'OPTIONS') return res.status(204).end();  
   if (req.method !== 'POST') return res.status(405).json({ ok:false, msg:'Method not allowed' });  
   
@@ -42,26 +39,25 @@ export default async function handler(req, res){
   
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);  
   
-    // === CONSULTA AJUSTADA PARA A SUA TABELA "Banco_ID" ===  
-    // Colunas com espaço precisam de aspas duplas e SELECT explícito.  
+    // Consulta na VIEW drivers (criada a partir de "Banco_ID")  
     const { data: driverRow, error: drvErr } = await supabase  
-      .from('Banco_ID')  
-      .select('"ID do motorista","Nome do motorista"')  
-      .eq('"ID do motorista"', idDriver)  
+      .from('drivers')  
+      .select('nome')  
+      .eq('id_driver', idDriver)  
       .single();  
   
     if (drvErr || !driverRow){  
       return res.status(404).json({ ok:false, msg:'ID não encontrado na base.' });  
     }  
   
-    const nome = driverRow['Nome do motorista'];  
+    const nome = driverRow.nome;  
   
     // Geofence  
     const dist = calcularDistKm(LAT_BASE, LNG_BASE, Number(lat), Number(lng));  
     const dentro = dist <= RAIO_KM + 0.2;  
     const status = dentro ? 'DENTRO_RAIO' : 'FORA_RAIO';  
   
-    // Grava log em "checkins" (tabela já criada no guia)  
+    // Grava log em "checkins"  
     const { error: insErr } = await supabase.from('checkins').insert([{  
       id_driver: idDriver,  
       driver: nome,  
@@ -86,4 +82,4 @@ export default async function handler(req, res){
     console.error(e);  
     return res.status(500).json({ ok:false, msg:'Erro inesperado.' });  
   }  
-} 
+}  
