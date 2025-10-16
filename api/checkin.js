@@ -42,25 +42,26 @@ export default async function handler(req, res){
   
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);  
   
-    // Busca do driver  
+    // === CONSULTA AJUSTADA PARA A SUA TABELA "Banco_ID" ===  
+    // Colunas com espaço precisam de aspas duplas e SELECT explícito.  
     const { data: driverRow, error: drvErr } = await supabase  
-      .from('drivers')  
-      .select('nome')  
-      .eq('id_driver', idDriver)  
+      .from('Banco_ID')  
+      .select('"ID do motorista","Nome do motorista"')  
+      .eq('"ID do motorista"', idDriver)  
       .single();  
   
     if (drvErr || !driverRow){  
       return res.status(404).json({ ok:false, msg:'ID não encontrado na base.' });  
     }  
   
-    const nome = driverRow.nome;  
+    const nome = driverRow['Nome do motorista'];  
   
     // Geofence  
     const dist = calcularDistKm(LAT_BASE, LNG_BASE, Number(lat), Number(lng));  
     const dentro = dist <= RAIO_KM + 0.2;  
     const status = dentro ? 'DENTRO_RAIO' : 'FORA_RAIO';  
   
-    // Grava log  
+    // Grava log em "checkins" (tabela já criada no guia)  
     const { error: insErr } = await supabase.from('checkins').insert([{  
       id_driver: idDriver,  
       driver: nome,  
@@ -85,4 +86,4 @@ export default async function handler(req, res){
     console.error(e);  
     return res.status(500).json({ ok:false, msg:'Erro inesperado.' });  
   }  
-}  
+} 
