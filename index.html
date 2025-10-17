@@ -1,106 +1,150 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Check-in HUB</title>
-<style>
-  :root{
-    --bg:#f9f6f2; --title:#a64b2a; --btn:#a64b2a; --btn-hover:#8d3f23; --text:#5c3b2e; --border:#d18460;
-  }
-  body{
-    margin:0; font-family:"Poppins",system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-    background:var(--bg); color:var(--text); display:flex; align-items:center; justify-content:center; min-height:100vh;
-  }
-  .box{ text-align:center; }
-  .logo{ width:160px; height:auto; display:block; margin:0 auto 10px; }
-  h1{ color:var(--title); font-weight:700; margin:6px 0 16px; }
-  .pin{ font-size:26px; margin-right:6px; vertical-align:middle; }
-  input{
-    border:1.5px solid var(--border); border-radius:8px; padding:10px 12px; width:260px; font-size:15px; outline:none;
-    background:#fff; color:#333;
-  }
-  button{
-    display:inline-block; margin-top:12px; background:var(--btn); color:#fff; border:none; border-radius:10px;
-    padding:10px 18px; font-size:15px; cursor:pointer;
-  }
-  button:hover{ background:var(--btn-hover); }
-  #status{ margin-top:12px; font-size:14px; }
-  .ok{ color:#1b7031; font-weight:600; }
-  .err{ color:#b62828; font-weight:600; }
-</style>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Check-in HUB</title>
+  <style>
+    :root{
+      --bg:#ffffff;
+      --title:#b85f35;
+      --title-soft:#d17b4a;
+      --text:#5a463a;
+      --border:#e7c5ac;
+      --btn:#e98a4a;
+      --btn-hover:#d97a3e;
+      --btn-trans:rgba(233,138,74,0.20);
+    }
+    body{
+      margin:0;
+      font-family:"Poppins",system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-height:100vh;
+    }
+    .box{ text-align:center; max-width:360px; }
+    .logo{
+      width:160px; height:auto; display:block; margin:0 auto 10px;
+      background: rgba(233,138,74,0.06);
+      border-radius:14px; padding:8px;
+    }
+    h1{
+      color:var(--title); font-weight:700; margin:6px 0 16px;
+      text-shadow: 0 1px 0 rgba(0,0,0,0.04);
+    }
+    input{
+      border:1.5px solid var(--border); border-radius:10px;
+      padding:12px 14px; width:260px; font-size:15px;
+      background:#fff; color:#2c2c2c;
+      box-shadow: 0 1px 6px rgba(233,138,74,0.08);
+      outline:none;
+    }
+    input:focus{ border-color: var(--btn); box-shadow: 0 0 0 3px var(--btn-trans); }
+    button{
+      display:inline-block; margin-top:12px; background:var(--btn); color:#fff;
+      border:none; border-radius:12px; padding:11px 18px; font-size:15px; cursor:pointer;
+      box-shadow: 0 6px 20px rgba(233,138,74,0.22);
+      transition: transform .05s ease, background .2s ease, box-shadow .2s ease;
+    }
+    button:hover{ background:var(--btn-hover); }
+    button:active{ transform: translateY(1px); box-shadow: 0 4px 14px rgba(233,138,74,0.20); }
+    #status{ margin-top:12px; font-size:14px; min-height:20px; }
+    .ok{ color:#1b7031; font-weight:600; }
+    .err{ color:#b03a2e; font-weight:600; }
+    .card-surface{
+      background: rgba(233,138,74,0.06);
+      border: 1px solid rgba(233,138,74,0.18);
+      border-radius: 16px;
+      padding: 16px 12px;
+    }
+  </style>
 </head>
 <body>
   <div class="box">
     <img src="./mascote.png" alt="Mascote" class="logo"/>
-    <h1><span class="pin">📍</span>Check-in HUB</h1>
-    <input id="idInput" placeholder="ID do motorista"/>
-    <br/>
-    <button id="btn">Registrar</button>
-    <div id="status"></div>
+    <div class="card-surface">
+      <h1>📍Check-in HUB</h1>
+      <input id="idInput" placeholder="ID do motorista"/>
+      <br/>
+      <button id="btn">Registrar</button>
+      <div id="status"></div>
+    </div>
   </div>
 
-<script>
-const API_URL = '/api/checkin'; 
+  <script>
+    const API_URL = '/api/checkin';
 
-(function init(){
-  const params = new URLSearchParams(location.search);
-  const prefillId = params.get('id') || '';
-  if(prefillId) document.getElementById('idInput').value = prefillId;
-  document.getElementById('btn').addEventListener('click', submit);
-})();
+    (function init(){
+      const params = new URLSearchParams(location.search);
+      const prefillId = params.get('id') || '';
+      if (prefillId) document.getElementById('idInput').value = prefillId;
+      document.getElementById('btn').addEventListener('click', submit);
+    })();
 
-function submit(){
-  const id = document.getElementById('idInput').value.trim();
-  const out = document.getElementById('status');
-  const btn = document.getElementById('btn');
+    function submit(){
+      const id = document.getElementById('idInput').value.trim();
+      const out = document.getElementById('status');
+      const btn = document.getElementById('btn');
 
-  if(!id){ out.innerHTML = '<div class="err">Informe seu ID.</div>'; return; }
+      if (!id){
+        out.innerHTML = '<div class="err">Informe seu ID.</div>';
+        return;
+      }
 
-  btn.disabled = true; btn.textContent = 'Obtendo localização...';
+      btn.disabled = true;
+      btn.textContent = 'Obtendo localização...';
 
-  if(!navigator.geolocation){
-    out.innerHTML = '<div class="err">Seu dispositivo não suporta GPS.</div>';
-    btn.disabled = false; btn.textContent = 'Registrar'; return;
-  }
+      if (!navigator.geolocation){
+        out.innerHTML = '<div class="err">Seu dispositivo não suporta GPS.</div>';
+        btn.disabled = false;
+        btn.textContent = 'Registrar';
+        return;
+      }
 
-  navigator.geolocation.getCurrentPosition(success, fail, {enableHighAccuracy:true, timeout:12000, maximumAge:0});
+      navigator.geolocation.getCurrentPosition(success, fail, { enableHighAccuracy:true, timeout:12000, maximumAge:0 });
 
-  async function success(pos){
-    const { latitude, longitude, accuracy } = pos.coords;
-    const deviceId = getDeviceId();
-    const ua = navigator.userAgent;
-    btn.textContent = 'Registrando...';
+      async function success(pos){
+        const { latitude, longitude, accuracy } = pos.coords;
+        const deviceId = getDeviceId();
+        const ua = navigator.userAgent;
+        btn.textContent = 'Registrando...';
+        try{
+          const r = await fetch(API_URL, {
+            method:'POST',
+            headers:{ 'Content-Type':'application/json' },
+            body: JSON.stringify({ id, lat: latitude, lng: longitude, acc: accuracy, deviceId, ua })
+          });
+          const resp = await r.json();
+          out.innerHTML = resp.ok
+            ? `<div class="ok">${resp.msg}</div>`
+            : `<div class="err">${resp.msg}</div>`;
+        }catch(e){
+          out.innerHTML = `<div class="err">${e.message || e}</div>`;
+        }finally{
+          btn.disabled = false;
+          btn.textContent = 'Registrar';
+        }
+      }
 
-    try{
-      const r = await fetch(API_URL, {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ id, lat: latitude, lng: longitude, acc: accuracy, deviceId, ua })
-      });
-      const resp = await r.json();
-      out.innerHTML = resp.ok ? `<div class="ok">${resp.msg}</div>` : `<div class="err">${resp.msg}</div>`;
-    }catch(e){
-      out.innerHTML = `<div class="err">${e.message || e}</div>`;
-    }finally{
-      btn.disabled = false; btn.textContent = 'Registrar';
+      function fail(){
+        btn.disabled = false;
+        btn.textContent = 'Registrar';
+        out.innerHTML = '<div class="err">Ative o GPS e permita a localização.</div>';
+      }
     }
-  }
 
-  function fail(){
-    btn.disabled = false; btn.textContent = 'Registrar';
-    out.innerHTML = '<div class="err">Ative o GPS e permita a localização.</div>';
-  }
-}
-
-function getDeviceId(){
-  let id = localStorage.getItem('device_id');
-  if(!id){
-    id = 'DEV-' + Math.random().toString(36).slice(2,10) + '-' + Date.now().toString(36);
-    localStorage.setItem('device_id', id);
-  }
-  return id;
-}
-</script>
+    function getDeviceId(){
+      let id = localStorage.getItem('device_id');
+      if (!id){
+        id = 'DEV-' + Math.random().toString(36).slice(2,10) + '-' + Date.now().toString(36);
+        localStorage.setItem('device_id', id);
+      }
+      return id;
+    }
+  </script>
 </body>
 </html>
