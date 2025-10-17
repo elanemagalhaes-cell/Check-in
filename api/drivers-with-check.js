@@ -1,9 +1,10 @@
 // api/drivers-with-check.js
 import { createClient } from '@supabase/supabase-js';
 
+// 🔐 Variáveis de ambiente
 const SUPABASE_URL = 'https://jnubttskgcdguoroyyzy.supabase.co';
 const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpudWJ0dHNrZ2NkZ3Vvcm95eXp5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDYzMzA2NywiZXhwIjoyMDc2MjA5MDY3fQ.nkuKEKDKGJ2wSorV_JOzns2boV2zAZMWmK4ZiV3-k3s';
-const CONTAINER_CSV_URL =   'https://docs.google.com/spreadsheets/d/e/2PACX-1vQpgd6xlhwuAnfyn3wG-wJApgfoIUmoIfyADk1ohcV03Rd1ZM98d2FPx3NN2E6bDM0pMdf3OgRd-DGi/pub?output=csv';
+const CONTAINER_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQpgd6xlhwuAnfyn3wG-wJApgfoIUmoIfyADk1ohcV03Rd1ZM98d2FPx3NN2E6bDM0pMdf3OgRd-DGi/pub?output=csv'; || ''; // link CSV (Google Sheets export)
 const DECLINE_HOUR = Number(process.env.DECLINE_HOUR || 14);
 const DECLINE_MINUTE = Number(process.env.DECLINE_MINUTE || 30);
 
@@ -18,8 +19,8 @@ const onlyDigits = (s) => norm(s).replace(/\D+/g, '');
 function normalizeId(id) {
   let d = onlyDigits(id);
   if (!d) return '';
-  d = d.replace(/0+$/, ''); // remove zeros finais
-  d = d.replace(/^0+/, ''); // remove zeros iniciais
+  d = d.replace(/0+$/, ''); // zeros finais
+  d = d.replace(/^0+/, ''); // zeros iniciais
   return d || '0';
 }
 
@@ -40,14 +41,12 @@ function parseCSV(csv) {
       const ch = line[j];
       if (ch === '"') {
         if (inQ && line[j + 1] === '"') {
-          cur += '"';
-          j++;
+          cur += '"'; j++;
         } else {
           inQ = !inQ;
         }
       } else if (ch === ',' && !inQ) {
-        cols.push(cur);
-        cur = '';
+        cols.push(cur); cur = '';
       } else {
         cur += ch;
       }
@@ -92,8 +91,8 @@ export default async function handler(req, res) {
     const base = [];
     for (const r of csvRows) {
       const corridor = norm(r[COL_CORRIDOR]);
-      const nameRaw = norm(r[COL_NAME]);
-      const idRaw = norm(r[COL_ID]);
+      const nameRaw  = norm(r[COL_NAME]);
+      const idRaw    = norm(r[COL_ID]);
       if (!nameRaw && !idRaw) continue;
 
       const id = normalizeId(idRaw);
@@ -106,10 +105,9 @@ export default async function handler(req, res) {
 
       base.push({ id, name, corridor });
     }
-    base.sort(
-      (a, b) =>
-        (a.id || '').localeCompare(b.id || '') ||
-        (a.name || '').localeCompare(b.name || '')
+    base.sort((a, b) =>
+      (a.id || '').localeCompare(b.id || '') ||
+      (a.name || '').localeCompare(b.name || '')
     );
 
     // 2) Busca check-ins de hoje
@@ -129,7 +127,7 @@ export default async function handler(req, res) {
     if (error) throw error;
 
     const ref = new Set();
-    for (const r of regs || []) {
+    for (const r of (regs || [])) {
       const kid = normalizeId(r.id_driver);
       ref.add(key(kid, r.driver));
     }
