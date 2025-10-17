@@ -1,13 +1,14 @@
 // api/checkin.js
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL ='https://jnubttskgcdguoroyyzy.supabase.co';
-const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpudWJ0dHNrZ2NkZ3Vvcm95eXp5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDYzMzA2NywiZXhwIjoyMDc2MjA5MDY3fQ.nkuKEKDKGJ2wSorV_JOzns2boV2zAZMWmK4ZiV3-k3s'; // sua service_role key
-
+// 🔐 Variáveis de ambiente (configure na Vercel: Settings → Environment Variables)
+const SUPABASE_URL = 'https://jnubttskgcdguoroyyzy.supabase.co';
+const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpudWJ0dHNrZ2NkZ3Vvcm95eXp5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDYzMzA2NywiZXhwIjoyMDc2MjA5MDY3fQ.nkuKEKDKGJ2wSorV_JOzns2boV2zAZMWmK4ZiV3-k3s';
+// 📍 Geofence
 const LAT_BASE = -22.798782412241856;
 const LNG_BASE = -43.3489248374091;
-const RAIO_KM = 2;          // km
-const MIN_ACCURACY_OK = 1200; // metros
+const RAIO_KM = 2;              // km
+const MIN_ACCURACY_OK = 1200;   // metros
 
 function calcularDistKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
@@ -58,13 +59,13 @@ export default async function handler(req, res) {
     }
     const nome = driverRow.nome;
 
-    // 2) Regra de DISPOSITIVO (mesmo aparelho não registra p/ outro ID no mesmo dia)
+    // 2) Regra do DISPOSITIVO (mesmo aparelho não registra p/ outro ID no mesmo dia)
     const now = new Date();
     const yyyy = now.getFullYear();
     const mm = String(now.getMonth() + 1).padStart(2, '0');
     const dd = String(now.getDate()).padStart(2, '0');
     const inicio = `${yyyy}-${mm}-${dd}T00:00:00`;
-    const fim = `${yyyy}-${mm}-${dd}T23:59:59`;
+    const fim    = `${yyyy}-${mm}-${dd}T23:59:59`;
 
     const { data: deviceRegs, error: devErr } = await supabase
       .from('checkins')
