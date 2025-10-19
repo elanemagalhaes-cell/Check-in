@@ -11,7 +11,7 @@ import { createClient } from '@supabase/supabase-js';
  */
 const SUPABASE_URL = 'https://jnubttskgcdguoroyyzy.supabase.co';
 const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpudWJ0dHNrZ2NkZ3Vvcm95eXp5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDYzMzA2NywiZXhwIjoyMDc2MjA5MDY3fQ.nkuKEKDKGJ2wSorV_JOzns2boV2zAZMWmK4ZiV3-k3s';
-const CONTAINER_CSV_URL ='https://docs.google.com/spreadsheets/d/e/2PACX-1vQpgd6xlhwuAnfyn3wG-wJApgfoIUmoIfyADk1ohcV03Rd1ZM98d2FPx3NN2E6bDM0pMdf3OgRd-DGi/pub?output=csv';
+const CONTAINER_CSV_URL ='https://docs.google.com/spreadsheets/d/e/2PACX-1vQpgd6xlhwuAnfyn3wG-wJApgfoIUmoIfyADk1ohcV03Rd1ZM98d2FPx3NN2E6bDM0pMdf3OgRd-DGi/pub?gid=1330043296&single=true&output=csv';
 const DECLINE_HOUR = Number(process.env.DECLINE_HOUR || 14);
 const DECLINE_MINUTE = Number(process.env.DECLINE_MINUTE || 30);
 
