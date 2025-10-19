@@ -162,6 +162,7 @@ async function handler(req, res) {
   }
 }
 
+
 // Vercel (Node serverless) aceita module.exports;
 // se for Next.js API, o export default também funciona.
 module.exports = handler;
