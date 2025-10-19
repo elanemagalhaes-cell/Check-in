@@ -25,6 +25,7 @@
       align-items:center;
       justify-content:center;
       min-height:100vh;
+      position:relative;
     }
     .box{ text-align:center; max-width:360px; }
     .logo{
@@ -61,6 +62,17 @@
       border-radius: 16px;
       padding: 16px 12px;
     }
+    /* Marca d'água */
+    .marca {
+      position: absolute;
+      bottom: 12px;
+      right: 16px;
+      font-size: 11px;
+      color: rgba(184,95,53,0.45);
+      font-weight: 500;
+      user-select: none;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
@@ -73,6 +85,11 @@
       <button id="btn">Registrar</button>
       <div id="status"></div>
     </div>
+  </div>
+
+  <!-- Marca d'água -->
+  <div class="marca">
+    Projeto: Elane Nascimento Magalhães — Since Ago 2025 • Shopee
   </div>
 
   <script>
