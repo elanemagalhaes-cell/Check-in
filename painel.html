@@ -3,50 +3,93 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Painel — Escalados x Check-in</title>
+<title>Painel de Drivers — Shopee</title>
 <style>
-  :root{--bg:#0b1020;--card:#121831;--muted:#9aa3b2;--border:#223054}
+  :root{
+    --bg:#ffffff;
+    --card:#fff7f2;
+    --text:#3a2e29;
+    --border:#f1d2be;
+    --muted:#7b6b63;
+    --orange:#e98a4a;
+    --orange-dark:#d97a3e;
+  }
   *{box-sizing:border-box}
-  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,Helvetica,Arial;background:linear-gradient(180deg,#0b1020,#0e1430);color:#e5e7eb}
-  .wrap{max-width:1100px;margin:24px auto;padding:0 16px}
-  h1{font-size:1.35rem;margin:0 0 8px}
-  .small{font-size:.9rem;color:var(--muted)}
-  .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-top:14px}
-  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  .btn{padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:#1a2b57;color:#e5e7eb;cursor:pointer}
-  .btn:active{transform:scale(.98)}
-  table{width:100%;border-collapse:collapse;margin-top:8px}
-  thead th{position:sticky;top:0;background:#0f162f;text-align:left;border-bottom:1px solid var(--border);padding:10px}
-  tbody td{border-bottom:1px solid var(--border);padding:10px}
-  .badge-ok{display:inline-block;padding:4px 8px;border-radius:999px;border:1px solid #1e3a2b;background:#0e2a1c;color:#bbf7d0;font-size:.85rem}
-  .badge-warn{display:inline-block;padding:4px 8px;border-radius:999px;border:1px solid #5f1b1b;background:#3a1212;color:#fecaca;font-size:.85rem}
-  .badge-miss{ color:#9aa3b2 }
-  .mono{ font-family: ui-monospace,Consolas,Menlo,monospace }
+  body{
+    margin:0;
+    font-family:"Poppins",system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    background:var(--bg); color:var(--text); min-height:100vh; position:relative; overflow-x:hidden;
+  }
+  /* Marca d’água Shopee */
+  body::before{
+    content:"Shopee";
+    position:absolute; inset:0; display:block; text-align:center; top:45vh;
+    font-size:120px; font-weight:800; color:rgba(233,138,74,0.06);
+    transform:rotate(-18deg); pointer-events:none; user-select:none;
+  }
+  .wrap{max-width:1100px;margin:0 auto;padding:36px 16px;position:relative;z-index:1}
+  h1{margin:0 0 8px;color:var(--orange-dark);font-size:1.6rem}
+  .small{color:var(--muted);font-size:.92rem}
+  .card{
+    background:var(--card); border:1px solid var(--border); border-radius:16px;
+    padding:16px; margin-top:16px; box-shadow:0 8px 26px rgba(233,138,74,0.14);
+  }
+  .row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+  .btn{
+    background:var(--orange); color:#fff; border:none; border-radius:12px;
+    padding:10px 16px; font-size:15px; cursor:pointer; box-shadow:0 6px 20px rgba(233,138,74,0.26);
+    transition:.2s;
+  }
+  .btn:hover{ background:var(--orange-dark) }
+  .btn:active{ transform:translateY(1px) }
+  .search{
+    display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+  }
+  input[type="text"]{
+    border:1px solid var(--border); border-radius:10px; padding:10px 12px;
+    background:#fff; color:#2c2c2c; min-width:240px; font-size:14px;
+  }
+  table{width:100%;border-collapse:collapse;margin-top:12px;background:#fff;border:1px solid #f3e0d2}
+  thead th{
+    position:sticky;top:0;background:#fff5ef;color:var(--orange-dark);
+    padding:10px;border-bottom:2px solid var(--orange);text-align:left
+  }
+  tbody td{padding:10px;border-bottom:1px solid #f2e4d8}
+  tbody tr:nth-child(even){background:#fffaf7}
+  .mono{font-family:ui-monospace,Consolas,Menlo,monospace}
+  .status{font-weight:600}
+  .ok{background:#d1fae5;color:#065f46;padding:4px 8px;border-radius:999px}
+  .decl{background:#fee2e2;color:#991b1b;padding:4px 8px;border-radius:999px}
+  .dash{color:#999}
+  .note{font-size:.86rem; color:var(--muted); margin-top:6px}
 </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>Drivers únicos (Escalados) + Registro de check-in</h1>
+    <h1>📋 Painel de Drivers — Shopee</h1>
     <p class="small">
-      Exibe Driver ID → Driver name → Corridor/Cage.
-      Status: <span class="badge-ok">🟢 Check in</span> quando registrou hoje; após 14:30, quem não registrou aparece como <span class="badge-warn">🛑 Declinou</span>.
+      Ordenado por <strong>Corridor/Cage</strong> (A→Z). A coluna <strong>Ordem</strong> mostra a posição geral (1°, 2°, …).
     </p>
 
     <div class="card">
-      <div class="row" style="justify-content:space-between">
-        <div class="small">Linhas: <span id="rowCount">0</span></div>
-        <div class="row">
-          <button class="btn" id="btnReload">Atualizar</button>
+      <div class="row">
+        <div class="search">
+          <span class="small">Linhas: <span id="rowCount">0</span></span>
+          <input id="q" type="text" placeholder="Filtrar por nome, ID ou corredor..."/>
         </div>
+        <button id="btnReload" class="btn">Atualizar</button>
       </div>
 
-      <div style="overflow:auto;max-height:70vh;margin-top:8px">
+      <div class="note">Status: 🟢 Check in quando registrou hoje; após o horário-limite, quem não registrou aparece como 🛑 Declinou.</div>
+
+      <div style="overflow:auto;max-height:72vh;margin-top:10px">
         <table id="tbl">
           <thead>
             <tr>
               <th>Driver ID</th>
-              <th>Driver name</th>
+              <th>Driver</th>
               <th>Corridor/Cage</th>
+              <th>Ordem</th>
               <th>Status</th>
             </tr>
           </thead>
@@ -57,64 +100,75 @@
   </div>
 
 <script>
-const API_URL = '/api/drivers-with-check'; // mesmo domínio do app
+const API_URL = '/api/drivers-with-check'; // retorna { ok, data:[{id,name,corridor,inRef}], decline:{h,m} }
+let FULL_DATA = [];
 
 function isAtOrAfterDecline(d = new Date(), thr = {h:14, m:30}){
   const nowM = d.getHours()*60 + d.getMinutes();
-  const thrM = thr.h*60 + thr.m;
-  return nowM >= thrM;
+  return nowM >= (thr.h*60 + thr.m);
+}
+
+function render(rows, decline){
+  const tbody = document.querySelector('#tbl tbody');
+  const counter = document.getElementById('rowCount');
+  const showDeclined = isAtOrAfterDecline(new Date(), decline);
+  tbody.innerHTML = '';
+
+  // Ordena por corredor e nome
+  rows.sort((a,b)=>{
+    return (a.corridor||'').localeCompare(b.corridor||'','pt-BR') ||
+           (a.name||'').localeCompare(b.name||'','pt-BR');
+  });
+
+  const frag = document.createDocumentFragment();
+  rows.forEach((item, idx)=>{
+    const tr = document.createElement('tr');
+
+    const tdId  = document.createElement('td'); tdId.textContent  = item.id; tdId.className='mono';
+    const tdNm  = document.createElement('td'); tdNm.textContent  = item.name;
+    const tdCor = document.createElement('td'); tdCor.textContent = item.corridor || '';
+    const tdOrd = document.createElement('td'); tdOrd.textContent = `${idx+1}°`;
+
+    const tdSt  = document.createElement('td'); tdSt.className='status';
+    if(item.inRef) tdSt.innerHTML = '<span class="ok">🟢 Check in</span>';
+    else if(showDeclined) tdSt.innerHTML = '<span class="decl">🛑 Declinou</span>';
+    else tdSt.innerHTML = '<span class="dash">—</span>';
+
+    tr.append(tdId, tdNm, tdCor, tdOrd, tdSt);
+    frag.appendChild(tr);
+  });
+
+  tbody.appendChild(frag);
+  counter.textContent = String(rows.length);
 }
 
 async function load(){
-  const body = document.querySelector('#tbl tbody');
-  const counter = document.getElementById('rowCount');
-  body.innerHTML = '<tr><td colspan="4">Carregando...</td></tr>';
+  const tbody = document.querySelector('#tbl tbody');
+  tbody.innerHTML = '<tr><td colspan="5">Carregando...</td></tr>';
 
   try{
     const r = await fetch(API_URL);
-    const json = await r.json();
-    if(!json.ok) throw new Error(json.msg || 'Falha ao carregar');
-
-    const rows = json.data || [];
-    const thr = json.decline || {h:14, m:30};
-    const showDeclined = isAtOrAfterDecline(new Date(), thr);
-
-    body.innerHTML = '';
-    const frag = document.createDocumentFragment();
-
-    for(const item of rows){
-      const tr = document.createElement('tr');
-
-      const td1 = document.createElement('td');
-      td1.textContent = item.id;
-      td1.className = 'mono';
-
-      const td2 = document.createElement('td');
-      td2.textContent = item.name;
-
-      const td3 = document.createElement('td');
-      td3.textContent = item.corridor || '';
-
-      const td4 = document.createElement('td');
-      if(item.inRef) td4.innerHTML = '<span class="badge-ok">🟢 Check in</span>';
-      else if(showDeclined) td4.innerHTML = '<span class="badge-warn">🛑 Declinou</span>';
-      else td4.innerHTML = '<span class="badge-miss">—</span>';
-
-      tr.append(td1, td2, td3, td4);
-      frag.appendChild(tr);
-    }
-
-    body.appendChild(frag);
-    if(counter) counter.textContent = String(rows.length);
-
+    const { ok, data = [], decline = {h:14,m:30}, msg } = await r.json();
+    if(!ok) throw new Error(msg || 'Falha ao carregar');
+    FULL_DATA = data.slice(); // guarda para filtros
+    render(FULL_DATA, decline);
   }catch(e){
-    body.innerHTML = `<tr><td colspan="4" class="badge-warn">Erro: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="decl">Erro: ${e.message}</td></tr>`;
   }
 }
 
+// Filtro simples no cliente
+document.getElementById('q')?.addEventListener('input', (ev)=>{
+  const v = (ev.target.value || '').toLowerCase();
+  const filtered = FULL_DATA.filter(item =>
+    String(item.id||'').toLowerCase().includes(v) ||
+    String(item.name||'').toLowerCase().includes(v) ||
+    String(item.corridor||'').toLowerCase().includes(v)
+  );
+  render(filtered, {h:14,m:30});
+});
+
 document.getElementById('btnReload')?.addEventListener('click', load);
-  
-  
 load();
 </script>
 </body>
