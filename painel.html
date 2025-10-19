@@ -42,17 +42,13 @@
   }
   .btn:hover{ background:var(--orange-dark) }
   .btn:active{ transform:translateY(1px) }
-
-  .search{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .search{
+    display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+  }
   input[type="text"]{
     border:1px solid var(--border); border-radius:10px; padding:10px 12px;
-    background:#fff; color:#2c2c2c; min-width:240px; font-size:14px;
+    background:#fff; color:#2c2c2c; min-width:260px; font-size:14px;
   }
-  .info{
-    font-size:.9rem; color:var(--orange-dark);
-    background:#fff1e6; border:1px solid #ffd9ba; padding:8px 10px; border-radius:10px;
-  }
-
   table{width:100%;border-collapse:collapse;margin-top:12px;background:#fff;border:1px solid #f3e0d2}
   thead th{
     position:sticky;top:0;background:#fff5ef;color:var(--orange-dark);
@@ -66,23 +62,13 @@
   .decl{background:#fee2e2;color:#991b1b;padding:4px 8px;border-radius:999px}
   .dash{color:#999}
   .note{font-size:.86rem; color:var(--muted); margin-top:6px}
-
-  /* destaque para linha encontrada */
-  .hl{ animation: hlFlash 2.2s ease-out 1; }
-  @keyframes hlFlash{
-    0%{ background:#fff0e6; }
-    50%{ background:#ffe3cc; }
-    100%{ background:inherit; }
+  /* Créditos/rodapé minimalistas */
+  .credits{
+    margin-top:14px; font-size:.78rem; color:var(--muted);
+    display:flex; gap:12px; flex-wrap:wrap
   }
-
-  /* Assinatura de projeto (marca d’água textual discreta) */
-  .brand-watermark{
-    position:fixed; left:14px; bottom:12px; font-size:11px; line-height:1.35;
-    color:rgba(0,0,0,.25); user-select:none; pointer-events:none;
-  }
-  @media (prefers-color-scheme: dark) {
-    .brand-watermark{ color:rgba(255,255,255,.25); }
-  }
+  .credits b{color:var(--text)}
+  mark{background:transparent;color:var(--orange-dark);font-weight:600}
 </style>
 </head>
 <body>
@@ -96,14 +82,15 @@
       <div class="row">
         <div class="search">
           <span class="small">Linhas: <span id="rowCount">0</span></span>
-          <input id="q" type="text" placeholder="Consultar posição: digite seu ID (ex.: 1450869)"/>
-          <span id="posInfo" class="info" style="display:none"></span>
+          <input id="q" type="text" placeholder="Consultar posição: digite seu ID (e.g. 1450869)"/>
         </div>
         <button id="btnReload" class="btn">Atualizar</button>
       </div>
 
       <div class="note">
-        Status: 🟢 Check in quando registrou hoje; após o horário-limite, quem não registrou aparece como 🛑 Declinou.
+        Status: <span class="ok" style="padding:2px 6px">🟢</span> Check in quando registrou hoje;
+        após o horário-limite, quem não registrou aparece como
+        <span class="decl" style="padding:2px 6px">🛑</span> Declinou.
       </div>
 
       <div style="overflow:auto;max-height:72vh;margin-top:10px">
@@ -120,58 +107,48 @@
           <tbody></tbody>
         </table>
       </div>
+
+      <div class="credits">
+        <span><b>Projeto</b> <mark>Check-in</mark></span>
+        <span><b>Supervisora</b> Cinthia Saiva</span>
+        <span><b>Analista de Frota</b> Ivan Adauto</span>
+        <span><b>Desenvolvedor</b> Elane Nascimento Magalhaes</span>
+        <span><b>Since</b> Out 2025</span>
+      </div>
     </div>
   </div>
 
-  <!-- Assinatura / marca d’água de projeto -->
-  <div class="brand-watermark">
-    <strong>Projeto</strong><br>
-    Supervisora: Cinthia Saiva<br>
-    Analista de Frota: Ivan Adauto<br>
-    Desenvolvedora: Elane Nascimento Magalhães<br>
-    Since Out 2025
-  </div>
-
 <script>
-/** =============================
- *  DADOS
- *  =============================
- *  Modo padrão: busca da API do seu app.
- *  Se quiser “100% estático”, comente o fetch e preencha STATIC_DATA.
- */
-const API_URL = '/api/drivers-with-check';
+/* =======================
+   CONFIG
+======================= */
+const API_URL = '/api/drivers-with-check'; // deve responder JSON { ok, data:[{id,name,corridor,inRef}], decline:{h,m} }
+let FULL_DATA = [];
+let DECLINE_CLOCK = { h:14, m:30 };
 
-// Exemplo para modo estático (opcional):
-// const STATIC_DATA = [
-//   { id:'1450869', name:'ADOLFO DE OLIVEIRA FERREIRA', corridor:'H-22', inRef:true },
-//   { id:'56280',   name:'JADSON SOUZA BONIFACIO',      corridor:'H-22', inRef:false },
-// ];
-
-let FULL_DATA = [];             // dados já ordenados
-let DECLINE_TIME = {h:14,m:30}; // horário de "declined"
-let lastHl;                     // última TR destacada
-
+/* =======================
+   HELPERS
+======================= */
 function isAtOrAfterDecline(d = new Date(), thr = {h:14, m:30}){
   const nowM = d.getHours()*60 + d.getMinutes();
   return nowM >= (thr.h*60 + thr.m);
 }
 
-function render(rows, decline){
-  const tbody   = document.querySelector('#tbl tbody');
+function render(rows){
+  const tbody = document.querySelector('#tbl tbody');
   const counter = document.getElementById('rowCount');
-  const showDeclined = isAtOrAfterDecline(new Date(), decline);
+  const showDeclined = isAtOrAfterDecline(new Date(), DECLINE_CLOCK);
   tbody.innerHTML = '';
 
-  // Ordenação estática em tela (corridor -> name)
-  const sorted = rows.slice().sort((a,b)=>{
+  // ordena por corredor e nome (painel estático)
+  rows.sort((a,b)=>{
     return (a.corridor||'').localeCompare(b.corridor||'','pt-BR') ||
            (a.name||'').localeCompare(b.name||'','pt-BR');
   });
 
   const frag = document.createDocumentFragment();
-  sorted.forEach((item, idx)=>{
+  rows.forEach((item, idx)=>{
     const tr = document.createElement('tr');
-    tr.dataset.id = String(item.id || '');
 
     const tdId  = document.createElement('td'); tdId.textContent  = item.id; tdId.className='mono';
     const tdNm  = document.createElement('td'); tdNm.textContent  = item.name;
@@ -188,83 +165,88 @@ function render(rows, decline){
   });
 
   tbody.appendChild(frag);
-  counter.textContent = String(sorted.length);
-  FULL_DATA = sorted;
+  counter.textContent = String(rows.length);
 }
 
+/* =======================
+   LOADING (resiliente)
+======================= */
 async function load(){
   const tbody = document.querySelector('#tbl tbody');
-  tbody.innerHTML = '<tr><td colspan="5">Carregando...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="5">Carregando…</td></tr>';
 
   try{
-    // ======= MODO DINÂMICO (API) =======
-    const r = await fetch(API_URL);
-    const { ok, data = [], decline = {h:14,m:30}, msg } = await r.json();
-    if(!ok) throw new Error(msg || 'Falha ao carregar');
-    DECLINE_TIME = decline;
-    render(data, DECLINE_TIME);
+    const res = await fetch(API_URL, { cache: 'no-store' });
+    const status = res.status;
+    const ctype = (res.headers.get('content-type') || '').toLowerCase();
 
-    // ======= MODO ESTÁTICO (se quiser) =======
-    // DECLINE_TIME = {h:14,m:30};
-    // render(STATIC_DATA, DECLINE_TIME);
+    // Lê o corpo como texto SEMPRE
+    const raw = await res.text();
+
+    // Tenta converter em JSON com regras flexíveis
+    let payload;
+    try{
+      if (ctype.includes('application/json') || raw.trim().startsWith('{') || raw.trim().startsWith('[')) {
+        payload = JSON.parse(raw);
+      } else {
+        throw new Error('Resposta não-JSON');
+      }
+    } catch (parseErr){
+      // Mostra erro legível no grid
+      const snippet = raw.slice(0, 240).replace(/\s+/g,' ').trim();
+      tbody.innerHTML =
+        `<tr><td colspan="5" class="decl">Erro: resposta inválida do servidor (status ${status}).<br>`+
+        `<small>Conteúdo recebido: <code>${escapeHtml(snippet) || '(vazio)'}</code></small></td></tr>`;
+      return;
+    }
+
+    // Valida JSON esperado
+    const { ok, data = [], decline = {h:14, m:30}, msg } = payload;
+    if (!ok) {
+      throw new Error(msg || `Falha de API (status ${status})`);
+    }
+
+    FULL_DATA = data.slice();
+    DECLINE_CLOCK = decline || DECLINE_CLOCK;
+    render(FULL_DATA);
 
   }catch(e){
-    tbody.innerHTML = `<tr><td colspan="5" class="decl">Erro: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="decl">Erro: ${escapeHtml(e.message)}</td></tr>`;
   }
 }
 
-/** Busca instantânea por ID:
- *  - conforme digita, se ID exato existir:
- *    • mostra nome, corredor e posição
- *    • destaca e rola até a linha
- */
-function wireLiveSearch(){
-  const input  = document.getElementById('q');
-  const posInfo = document.getElementById('posInfo');
-
-  input.addEventListener('input', e => {
-    const raw = e.target.value.trim();
-    if (!raw) {
-      posInfo.style.display = 'none';
-      if (lastHl) lastHl.classList.remove('hl');
-      return;
-    }
-
-    const target = raw.toLowerCase();
-    const idx = FULL_DATA.findIndex(d => String(d.id || '').toLowerCase() === target);
-
-    if (idx === -1) {
-      posInfo.textContent = `ID ${raw} não encontrado.`;
-      posInfo.style.display = 'inline-block';
-      if (lastHl) lastHl.classList.remove('hl');
-      return;
-    }
-
-    const pos = idx + 1;
-    const driver = FULL_DATA[idx];
-    posInfo.innerHTML = `
-      <strong>${driver.name}</strong><br>
-      ID: ${driver.id} • Corredor: ${driver.corridor || '-'}<br>
-      🏁 Posição: <strong>${pos}°</strong> de ${FULL_DATA.length}
-    `;
-    posInfo.style.display = 'inline-block';
-
-    const tbody = document.querySelector('#tbl tbody');
-    const tr = tbody.querySelector(`tr[data-id="${CSS.escape(String(driver.id))}"]`);
-    if (tr) {
-      if (lastHl) lastHl.classList.remove('hl');
-      tr.classList.add('hl');
-      lastHl = tr;
-      tr.scrollIntoView({ behavior:'smooth', block:'center' });
-    }
-  });
+function escapeHtml(s=''){
+  return s.replace(/[&<>"'`]/g, c => (
+    { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;', '`':'&#96;' }[c]
+  ));
 }
 
-document.getElementById('btnReload')?.addEventListener('click', load);
+/* =======================
+   BUSCA por ID/NOME/CORRIDOR
+======================= */
+const $q = document.getElementById('q');
+let tId;
+$q?.addEventListener('input', (ev)=>{
+  const v = (ev.target.value || '').trim().toLowerCase();
 
-// inicializa
+  // debounce leve para experiência suave
+  clearTimeout(tId);
+  tId = setTimeout(()=>{
+    if(!v){
+      render(FULL_DATA);
+      return;
+    }
+    const filtered = FULL_DATA.filter(item =>
+      String(item.id||'').toLowerCase().includes(v) ||
+      String(item.name||'').toLowerCase().includes(v) ||
+      String(item.corridor||'').toLowerCase().includes(v)
+    );
+    render(filtered);
+  }, 120);
+});
+
+document.getElementById('btnReload')?.addEventListener('click', load);
 load();
-wireLiveSearch();
 </script>
 </body>
 </html>
