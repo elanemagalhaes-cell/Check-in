@@ -1,18 +1,22 @@
 // /api/drivers-with-check.js
+// Preenche corridor via "PROCV": escalados_dia(data=hoje) -> fallback drivers
 
 const SUPABASE_URL = 'https://jnubttskgcdguoroyyzy.supabase.co';
+
 const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpudWJ0dHNrZ2NkZ3Vvcm95eXp5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDYzMzA2NywiZXhwIjoyMDc2MjA5MDY3fQ.nkuKEKDKGJ2wSorV_JOzns2boV2zAZMWmK4ZiV3-k3s';
+
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.SUPABASE_SERVICE_KEY ||
   "";
 
-const TABLE_CHECKINS = "checkins";
-const TABLE_DRIVERS  = "drivers";
+const T_CHECKINS      = "checkins";
+const T_DRIVERS       = "drivers";
+const T_ESCALADOS_DIA = "escalados_dia";
 
 const CACHE_TTL_MS = 20_000;
 let cache = { at: 0, payload: null };
 
-// -------- Utils --------
+// ---------- Utils ----------
 const norm = (s) => (s ?? "").toString().trim();
 const onlyDigits = (s) => norm(s).replace(/\D+/g, "");
 function normalizeId(id) {
@@ -22,29 +26,27 @@ function normalizeId(id) {
   return d || "0";
 }
 function todayDate() {
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const dd = String(now.getDate()).padStart(2, "0");
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
 }
 function parseTimeToSec(t) {
-  // "13:42:32.20185" -> segundos (para ordenar)
   if (!t) return Number.MAX_SAFE_INTEGER;
   const m = String(t).match(/^(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?$/);
   if (!m) return Number.MAX_SAFE_INTEGER;
   const h = +m[1], mi = +m[2], s = +m[3], frac = +(m[4] || 0);
-  return h*3600 + mi*60 + s + frac/10**m[4]?.length || 0;
+  return h*3600 + mi*60 + s + (m[4] ? frac / 10**m[4].length : 0);
 }
-
-async function supaPagedGet(path, query, selectRange = 1000) {
+async function supaPagedGet(path, query, page = 2000) {
   if (!SUPABASE_URL || !SERVICE_KEY) {
     throw new Error("Defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY/KEY nas envs da Vercel.");
   }
   const base = `${SUPABASE_URL}/rest/v1/${encodeURIComponent(path)}?${query}`;
   let start = 0, all = [];
   while (true) {
-    const end = start + selectRange - 1;
+    const end = start + page - 1;
     const r = await fetch(base, {
       headers: {
         apikey: SERVICE_KEY,
@@ -56,15 +58,13 @@ async function supaPagedGet(path, query, selectRange = 1000) {
     });
     const txt = await r.text();
     if (!r.ok) throw new Error(`Supabase ${path} (${r.status}): ${txt}`);
-    const chunk = JSON.parse(txt || "[]");
-    all.push(...chunk);
-    if (chunk.length < selectRange) break;
-    start += selectRange;
+    const batch = JSON.parse(txt || "[]");
+    all.push(...batch);
+    if (batch.length < page) break;
+    start += page;
   }
   return all;
 }
-
-// Tenta múltiplos nomes de coluna e devolve sempre {id, name, corridor}
 function mapDriverRow(r) {
   const id = normalizeId(r.id_driver);
   const name = norm(r.driver ?? r.driver_name ?? r.nome ?? "");
@@ -72,18 +72,18 @@ function mapDriverRow(r) {
   return { id, name, corridor };
 }
 
+// ---------- Core ----------
 async function buildPayload() {
   const today = todayDate();
 
-  // 1) CHECK-INS de hoje (usa coluna DATE 'data' + status DENTRO_RAIO)
+  // 1) Check-ins do dia (usa coluna DATE 'data' + hora)
   const selChk = encodeURIComponent("id_driver,driver,data,hora,geofence_status");
-  const chkQ =
-    `select=${selChk}` +
-    `&data=eq.${encodeURIComponent(today)}` +
+  const qChk =
+    `select=${selChk}&data=eq.${encodeURIComponent(today)}` +
     `&geofence_status=eq.DENTRO_RAIO`;
-  const chkRows = await supaPagedGet(TABLE_CHECKINS, chkQ);
+  const chkRows = await supaPagedGet(T_CHECKINS, qChk);
 
-  // guarda o MENOR horário de check-in por (id,name)
+  // earliest check-in por (id, name)
   const earliest = new Map(); // k -> {hora, horaSec}
   for (const r of chkRows) {
     const id = normalizeId(r.id_driver);
@@ -95,32 +95,45 @@ async function buildPayload() {
     if (!prev || s < prev.horaSec) earliest.set(k, { hora: r.hora, horaSec: s });
   }
 
-  // 2) TODOS os drivers
-  //    Seleciona * e mapeia (suporta driver/driver_name/nome + corridor/corridor_cage/cage)
-  const drivers = await supaPagedGet(TABLE_DRIVERS, `select=*`);
+  // 2) "PROCV" do corredor do dia: escalados_dia (data=hoje)
+  //    (se sua tabela tiver muitas linhas, isso é leve: só o dia)
+  const selEsc = encodeURIComponent("id_driver,corridor,data");
+  const qEsc = `select=${selEsc}&data=eq.${encodeURIComponent(today)}`;
+  const escRows = await supaPagedGet(T_ESCALADOS_DIA, qEsc);
+  const corridorById = new Map(); // id -> corridor (do dia)
+  for (const r of escRows) {
+    const id = normalizeId(r.id_driver);
+    const cor = norm(r.corridor);
+    if (id && cor) corridorById.set(id, cor);
+  }
 
-  // 3) Monta base e ordena
+  // 3) Base: todos os drivers (com fallback de corridor do próprio drivers)
+  const drvRows = await supaPagedGet(T_DRIVERS, `select=*`);
   const rows = [];
-  for (const rr of drivers) {
-    const { id, name, corridor } = mapDriverRow(rr);
+  for (const rr of drvRows) {
+    const { id, name, corridor: corridorFromDrivers } = mapDriverRow(rr);
     if (!id || !name) continue;
+
+    // corredor = primeiro tenta escalados_dia(hoje), senão usa drivers
+    const corridor =
+      corridorById.get(id) ||
+      corridorFromDrivers ||
+      ""; // vazio se não achou
+
     const k = id.toUpperCase() + "||" + name.toUpperCase();
     const hit = earliest.get(k);
+
     rows.push({
       id,
       name,
       corridor,
-      // check-in: quem tem 'hit' vem primeiro
       hasCheck: !!hit,
       hora: hit?.hora || null,
       horaSec: hit?.horaSec ?? Number.MAX_SAFE_INTEGER,
     });
   }
 
-  // Ordena por corridor (A→Z), depois:
-  //  - quem tem check-in primeiro (hasCheck false=1, true=0)
-  //  - por hora crescente (ordem de chegada)
-  //  - depois por nome
+  // 4) Ordenação e numeração da ordem por corredor
   rows.sort((a, b) =>
     (a.corridor || "").localeCompare(b.corridor || "", "pt-BR") ||
     (a.hasCheck === b.hasCheck ? 0 : a.hasCheck ? -1 : 1) ||
@@ -128,18 +141,17 @@ async function buildPayload() {
     (a.name || "").localeCompare(b.name || "", "pt-BR")
   );
 
-  // 4) Numera "ordem" dentro de cada corridor
   let lastCor = null, count = 0;
   for (const r of rows) {
     if (r.corridor !== lastCor) { lastCor = r.corridor; count = 0; }
-    count += 1;
-    r.ordem = count;
-    delete r.horaSec; // não precisa no payload
+    r.ordem = ++count;
+    delete r.horaSec;
   }
 
   return { ok: true, data: rows };
 }
 
+// ---------- Handler ----------
 export default async function handler(req, res) {
   if (req.method === "OPTIONS") {
     res.setHeader("Access-Control-Allow-Origin", "*");
