@@ -1,10 +1,12 @@
 // api/checkin.js
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpudWJ0dHNrZ2NkZ3Vvcm95eXp5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDYzMzA2NywiZXhwIjoyMDc2MjA5MDY3fQ.nkuKEKDKGJ2wSorV_JOzns2boV2zAZMWmK4ZiV3-k3s',
-const SUPABASE_SERVICE_KEY =
+export const config = { runtime: 'nodejs18.x', regions: ['gru1'] }; // São Paulo
 
-// 📍 HUB principal
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://jnubttskgcdguoroyyzy.supabase.co';
+const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpudWJ0dHNrZ2NkZ3Vvcm95eXp5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDYzMzA2NywiZXhwIjoyMDc2MjA5MDY3fQ.nkuKEKDKGJ2wSorV_JOzns2boV2zAZMWmK4ZiV3-k3s',
+
+// HUB SJM
 const LAT_BASE = -22.798782412241856;
 const LNG_BASE = -43.3489248374091;
 const HUB_ADDRESS = 'Av. Arthur Antônio Sendas, 999 - Parque Juriti, São João de Meriti - RJ, 25585-000';
@@ -17,17 +19,16 @@ function calcularDistKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) *
-    Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) ** 2;
+  const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(lat1 * Math.PI / 180) *
+            Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) ** 2;
   return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
-
 const normId = (v) => String(v ?? '').trim().replace(/\.0$/, '');
 
 export default async function handler(req, res) {
+  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -35,35 +36,39 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ ok: false, msg: 'Method not allowed' });
 
   try {
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY)
-      return res.status(500).json({ ok: false, msg: 'Configuração ausente.' });
+    // Checagem de env obrigatória
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+      return res.status(500).json({ ok: false, msg: 'Variáveis de ambiente ausentes (SUPABASE_URL / SUPABASE_SERVICE_KEY).' });
+    }
 
     const { id, lat, lng, acc, deviceId, ua } = req.body || {};
     const idDriver = normId(id);
+
     if (!idDriver) return res.status(400).json({ ok: false, msg: 'ID não informado.' });
-    if (lat == null || lng == null)
-      return res.status(400).json({ ok: false, msg: 'Ative o GPS e tente novamente.' });
-    if (acc && Number(acc) > MIN_ACCURACY_OK)
-      return res.status(400).json({ ok: false, msg: 'Sinal de GPS fraco. Vá para área aberta.' });
+    if (lat == null || lng == null) return res.status(400).json({ ok: false, msg: 'Ative o GPS e tente novamente.' });
+    if (acc != null && Number(acc) > MIN_ACCURACY_OK) return res.status(400).json({ ok: false, msg: 'Sinal de GPS fraco. Vá para área aberta.' });
     if (!deviceId) return res.status(400).json({ ok: false, msg: 'Dispositivo não identificado.' });
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-    const { data: driverRow } = await supabase
+    // 1) Buscar nome do driver
+    const { data: driverRow, error: drvErr } = await supabase
       .from('drivers')
       .select('nome')
       .eq('id_driver', idDriver)
       .single();
 
-    if (!driverRow) return res.status(404).json({ ok: false, msg: 'ID não encontrado.' });
+    if (drvErr || !driverRow) {
+      return res.status(404).json({ ok: false, msg: 'ID não encontrado na base.' });
+    }
     const nome = driverRow.nome;
 
-    const now = new Date();
-    const dataHoje = now.toISOString().split('T')[0];
-    const inicio = `${dataHoje}T00:00:00`;
-    const fim = `${dataHoje}T23:59:59`;
+    // 2) Mesma aparelho/dia (usa created_at)
+    const hoje = new Date().toISOString().slice(0,10);
+    const inicio = `${hoje}T00:00:00`;
+    const fim    = `${hoje}T23:59:59`;
 
-    const { data: deviceRegs } = await supabase
+    const { data: deviceRegs, error: devErr } = await supabase
       .from('checkins')
       .select('id_driver')
       .eq('device_id', deviceId)
@@ -71,19 +76,22 @@ export default async function handler(req, res) {
       .lte('created_at', fim)
       .limit(1);
 
+    if (devErr) {
+      return res.status(500).json({ ok: false, msg: `Falha ao validar dispositivo: ${devErr.message}` });
+    }
     if (deviceRegs && deviceRegs.length) {
       const idJaUsado = String(deviceRegs[0].id_driver ?? '').trim();
-      if (idJaUsado && idJaUsado !== idDriver)
-        return res.status(403).json({
-          ok: false,
-          msg: `Este aparelho já realizou check-in hoje para o ID ${idJaUsado}.`,
-        });
+      if (idJaUsado && idJaUsado !== idDriver) {
+        return res.status(403).json({ ok: false, msg: `Este aparelho já realizou check-in hoje para o ID ${idJaUsado}.` });
+      }
     }
 
+    // 3) Geofence
     const dist = calcularDistKm(LAT_BASE, LNG_BASE, Number(lat), Number(lng));
     const dentro = dist <= RAIO_KM + 0.2;
     const status = dentro ? 'DENTRO_RAIO' : 'FORA_RAIO';
 
+    // 4) Inserção
     const payload = {
       id_driver: idDriver,
       driver: nome,
@@ -95,13 +103,12 @@ export default async function handler(req, res) {
       device_id: deviceId || null,
       ua: ua || null,
       hub_address: HUB_ADDRESS,
-      hub_maps_link: HUB_MAPS_LINK,
+      hub_maps_link: HUB_MAPS_LINK
     };
 
     const { error: insErr } = await supabase.from('checkins').insert([payload]);
     if (insErr) {
-      console.error(insErr);
-      return res.status(500).json({ ok: false, msg: 'Falha ao registrar.' });
+      return res.status(500).json({ ok: false, msg: `Falha ao registrar: ${insErr.message}` });
     }
 
     return res.status(200).json({
@@ -118,11 +125,11 @@ export default async function handler(req, res) {
         dist_km: Number(dist.toFixed(3)),
         raio_km: RAIO_KM,
         status,
-        now: new Date().toISOString(),
-      },
+        now: new Date().toISOString()
+      }
     });
   } catch (e) {
-    console.error(e);
-    res.status(500).json({ ok: false, msg: 'Erro inesperado.' });
+    // Garante JSON mesmo em exceptions
+    return res.status(500).json({ ok: false, msg: e.message || 'Erro inesperado.' });
   }
 }
