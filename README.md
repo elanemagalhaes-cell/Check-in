@@ -54,7 +54,6 @@ Crie as seguintes variáveis:
 - geofence_status (text)
 - device_id (text)
 - ua (text)
-
 ## Testes rápidos
 - Acesse `/` no celular, permita o GPS e faça 1 check-in dentro do raio. 
 - Repita com o **mesmo device** para outro ID → deve bloquear.
