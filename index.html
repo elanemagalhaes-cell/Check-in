@@ -62,6 +62,21 @@
       border-radius: 16px;
       padding: 16px 12px;
     }
+    /* Novo: bloco do endereço do HUB */
+    .hub-info {
+      font-size: 12px;
+      margin-top: 8px;
+      line-height: 1.3;
+      color: #795548;
+    }
+    .hub-info a {
+      color: var(--title-soft);
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .hub-info a:hover {
+      text-decoration: underline;
+    }
     /* Marca d'água */
     .marca {
       position: absolute;
@@ -84,6 +99,16 @@
       <br/>
       <button id="btn">Registrar</button>
       <div id="status"></div>
+
+      <!-- Novo: endereço fixo e link do HUB -->
+      <div class="hub-info" id="hubInfo">
+        <strong>HUB São João de Meriti</strong><br/>
+        Av. Arthur Antônio Sendas, 999 - Parque Juriti, São João de Meriti - RJ, 25585-000<br/>
+        <a href="https://maps.app.goo.gl/dEpz6cp8rKXLWoqj9" target="_blank">Abrir no Google Maps</a>
+      </div>
+
+      <!-- Novo: debug técnico (opcional, visível só se vier no retorno da API) -->
+      <div id="debug" style="margin-top:8px;font-size:11px;color:#6b4b3a;"></div>
     </div>
   </div>
 
@@ -106,6 +131,8 @@
       const id = document.getElementById('idInput').value.trim();
       const out = document.getElementById('status');
       const btn = document.getElementById('btn');
+      const dbg = document.getElementById('debug');
+      const hubDiv = document.getElementById('hubInfo');
 
       if (!id){
         out.innerHTML = '<div class="err">Informe seu ID.</div>';
@@ -114,6 +141,8 @@
 
       btn.disabled = true;
       btn.textContent = 'Obtendo localização...';
+      out.innerHTML = '';
+      dbg.textContent = '';
 
       if (!navigator.geolocation){
         out.innerHTML = '<div class="err">Seu dispositivo não suporta GPS.</div>';
@@ -136,9 +165,27 @@
             body: JSON.stringify({ id, lat: latitude, lng: longitude, acc: accuracy, deviceId, ua })
           });
           const resp = await r.json();
+
           out.innerHTML = resp.ok
             ? `<div class="ok">${resp.msg}</div>`
             : `<div class="err">${resp.msg}</div>`;
+
+          // 🔹 Atualiza endereço/link do HUB se vier da API
+          if (resp.debug && resp.debug.hub_address){
+            hubDiv.innerHTML = `
+              <strong>HUB São João de Meriti</strong><br/>
+              ${resp.debug.hub_address}<br/>
+              <a href="${resp.debug.hub_maps_link}" target="_blank">Abrir no Google Maps</a>
+            `;
+          }
+
+          // 🔹 Mostra dados técnicos básicos (debug)
+          if (resp.debug){
+            dbg.innerHTML = `
+              Distância: ${resp.debug.dist_km?.toFixed(3)} km<br/>
+              Status: ${resp.debug.status}
+            `;
+          }
         }catch(e){
           out.innerHTML = `<div class="err">${e.message || e}</div>`;
         }finally{
