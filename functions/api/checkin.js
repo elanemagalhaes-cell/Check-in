@@ -29,8 +29,8 @@ export const onRequestOptions = async () => makeCors({}, 204);
 
 export const onRequestPost = async ({ request, env }) => {
   try {
-    const SUPABASE_URL = env.SUPABASE_URL;
-    const SUPABASE_SERVICE_KEY = env.SUPABASE_SERVICE_KEY;
+    const SUPABASE_URL = 'https://jnubttskgcdguoroyyzy.supabase.co';
+    const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpudWJ0dHNrZ2NkZ3Vvcm95eXp5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDYzMzA2NywiZXhwIjoyMDc2MjA5MDY3fQ.nkuKEKDKGJ2wSorV_JOzns2boV2zAZMWmK4ZiV3-k3s';
     const LAT_BASE = parseFloat(env.LAT_BASE ?? "-22.798782412241856");
     const LNG_BASE = parseFloat(env.LNG_BASE ?? "-43.3489248374091");
     const RADIUS_KM = parseFloat(env.RADIUS_KM ?? "1");
