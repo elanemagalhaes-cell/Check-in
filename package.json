@@ -3,15 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Check-in HUB funcional com BYPASS de geofence e cálculo de distância",
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0"
-  },
-  "scripts": {
-    "dev": "vercel dev"
-  },
-  "engines": {
-    "node": "18.x"
-  },
-  "license": "MIT"
+  }
 }
