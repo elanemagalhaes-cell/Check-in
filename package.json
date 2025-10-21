@@ -1,16 +1,14 @@
 {
-  "name": "checkin-full",
+  "name": "checkin-app",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Check-in HUB completo com Supabase e ping de saúde",
-  "main": "api/checkin.js",
+  "description": "Aplicativo de check-in de motoristas com geolocalização e integração Supabase",
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0"
   },
   "scripts": {
-    "dev": "vercel dev",
-    "start": "node api/checkin.js"
+    "dev": "vercel dev"
   },
   "engines": {
     "node": "18.x"
