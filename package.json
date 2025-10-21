@@ -1,9 +1,9 @@
 {
-  "name": "checkin-app",
+  "name": "checkin-full",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Aplicativo de check-in de motoristas com geolocalização e integração Supabase",
+  "description": "Check-in HUB completo com Supabase e ping de saúde",
   "main": "api/checkin.js",
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0"
@@ -13,7 +13,7 @@
     "start": "node api/checkin.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": "18.x"
   },
   "license": "MIT"
 }
