@@ -1,103 +1,75 @@
 <!doctype html>
 <html lang="pt-br">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Check-in HUB</title>
   <style>
-    body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;background:#fff;margin:0;display:flex;justify-content:center;min-height:100vh}
-    .wrap{max-width:420px;width:100%;padding:24px}
-    .card{border:1px solid #eee;border-radius:16px;padding:20px;box-shadow:0 6px 20px rgba(0,0,0,.06)}
-    h1{font-size:26px;margin:8px 0 16px;display:flex;align-items:center;gap:10px}
-    .pin{font-size:24px}
-    input{width:100%;padding:12px 14px;border-radius:10px;border:1px solid #ddd;font-size:16px}
-    button{margin-top:12px;width:100%;padding:12px 14px;border:0;border-radius:12px;background:#ff7a00;color:#fff;font-weight:700;font-size:16px;cursor:pointer}
-    .small{color:#666;font-size:12px;margin-top:8px}
-    .logo{display:block;margin:10px auto 16px;width:120px;height:120px;object-fit:contain}
-    .msg{margin-top:10px;font-weight:600}
-    .ok{color:#0a7c2e}
-    .err{color:#b00020}
-    .meta{font-size:12px;color:#555;margin-top:6px}
+    body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;background:#fff;margin:0;display:flex;justify-content:center}
+    .wrap{max-width:380px;width:100%;padding:24px 16px}
+    .card{background:#fff;border-radius:16px;box-shadow:0 6px 18px rgba(0,0,0,.08);padding:20px}
+    .logo{display:block;margin:28px auto 8px;width:160px;height:auto}
+    h1{font-size:26px;margin:6px 0 18px;text-align:center;color:#b85d2c}
+    .input{width:100%;box-sizing:border-box;padding:14px 12px;border:1px solid #e6e6e6;border-radius:10px;font-size:16px}
+    .btn{margin-top:14px;width:100%;padding:14px;border:none;border-radius:10px;background:#e58a52;color:#fff;font-weight:600;font-size:16px;cursor:pointer}
+    .msg{margin-top:14px;font-size:14px}
+    .muted{color:#777;font-size:12px;margin-top:6px}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <img class="logo" src="assets/shopee-dog.png" alt="Shopee mascot" />
+    <img class="logo" src="assets/shopee-dog.png" alt="Shopee mascot">
     <div class="card">
-      <h1><span class="pin">📍</span>Check-in HUB</h1>
-      <label for="id">Driver ID</label>
-      <input id="id" placeholder="ex: 449213" inputmode="numeric"/>
-      <button id="btn">Registrar</button>
-      <div class="small">
-        Check-in válido em até <b>1 km</b> de -22.798782, -43.348925. <a id="m1" href="#" target="_blank">Abrir mapa</a>
-      </div>
+      <h1>📍 Check-in HUB</h1>
+      <input id="id" class="input" inputmode="numeric" placeholder="Driver ID" />
+      <button class="btn" id="btn">Registrar</button>
       <div id="out" class="msg"></div>
-      <div id="meta" class="meta"></div>
+      <div class="muted">Ative o GPS e permita a localização.</div>
     </div>
   </div>
-<script>
-const api = "/api/checkin";
-const toFixed = (n,p=5)=>Number(n).toFixed(p);
 
-// deviceId persistente
-function getDeviceId(){
-  let id = localStorage.getItem("deviceId");
-  if(!id){
-    id = crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2)+"-"+Date.now();
-    localStorage.setItem("deviceId", id);
-  }
-  return id;
-}
+  <script>
+    const $ = (sel) => document.querySelector(sel);
+    const out = $('#out'), idEl = $('#id'), btn = $('#btn');
 
-// link de mapa
-const LAT_BASE = -22.798782412241856;
-const LNG_BASE = -43.3489248374091;
-document.getElementById("m1").href = `https://www.google.com/maps?q=${LAT_BASE},${LNG_BASE}`;
+    async function getPosition() {
+      return new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          (p) => resolve(p),
+          (e) => reject(e),
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+        );
+      });
+    }
 
-async function getPosition(){
-  return new Promise((resolve,reject)=>{
-    if(!navigator.geolocation) return reject(new Error("Geolocalização indisponível"));
-    navigator.geolocation.getCurrentPosition(
-      (pos)=>resolve(pos),
-      (err)=>reject(err),
-      { enableHighAccuracy:true, timeout:15000, maximumAge:0 }
-    );
-  });
-}
+    btn.addEventListener('click', async () => {
+      out.textContent = 'Enviando...';
+      try {
+        const id = idEl.value.trim();
+        if (!id) { out.textContent = 'Informe seu Driver ID.'; return; }
 
-async function doCheckin(){
-  const out = document.getElementById("out");
-  const meta = document.getElementById("meta");
-  out.textContent = "Enviando..."; out.className="msg";
-  meta.textContent = "";
-  try{
-    const id = document.getElementById("id").value.trim();
-    const pos = await getPosition();
-    const { latitude, longitude, accuracy } = pos.coords;
-    const payload = {
-      id,
-      lat: latitude,
-      lng: longitude,
-      acc: accuracy,
-      deviceId: getDeviceId(),
-      ua: navigator.userAgent
-    };
-    const r = await fetch(api, {
-      method: "POST",
-      headers: { "content-type":"application/json" },
-      body: JSON.stringify(payload)
+        const pos = await getPosition();
+        const { latitude:lat, longitude:lng, accuracy:acc } = pos.coords || {};
+        const payload = {
+          id, lat, lng, acc,
+          deviceId: (await crypto.subtle.digest("SHA-256", new TextEncoder().encode(navigator.userAgent + (navigator.platform||""))))
+            .then(buf => Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('')),
+          ua: navigator.userAgent
+        };
+        payload.deviceId = await payload.deviceId;
+
+        const r = await fetch('/api/checkin', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await r.json();
+        out.textContent = data.msg || 'OK';
+
+      } catch (e) {
+        out.textContent = 'Falha ao obter localização ou enviar.';
+      }
     });
-    const j = await r.json();
-    out.textContent = j.msg || (j.ok ? "OK" : "Erro");
-    out.className = "msg " + (j.ok ? "ok" : "err");
-    meta.textContent = `lat=${toFixed(payload.lat)}, lng=${toFixed(payload.lng)}, acc=${Math.round(payload.acc||0)}m`;
-  }catch(e){
-    out.textContent = "Falha ao obter localização ou enviar dados.";
-    out.className = "msg err";
-  }
-}
-
-document.getElementById("btn").addEventListener("click", doCheckin);
-</script>
+  </script>
 </body>
 </html>
