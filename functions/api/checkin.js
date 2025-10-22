@@ -1,4 +1,4 @@
-// functions/api/checkin.js  (versão sem @supabase/supabase-js)
+// functions/api/checkin.js 
 
 const calcularDistKm = (lat1, lon1, lat2, lon2) => {
   const R = 6371;
